@@ -1,5 +1,6 @@
 import pickle
 import helpers as hp
+from runProperties import run 
 from particleTemplate import particle as pT
 from simulationProps import properties as sP
 from geometryInsert import geometryInsert as gI
@@ -10,9 +11,11 @@ class Options():
         self.hasParticles = False
         self.hasGeometries = False
         self.hasFactory = False
+        self.hasRunSetup = False
         self.geom = gI()
         self.simProps = sP()
         self.partTemp = pT()
+        self.runProps = run()
         self.opt = -1
 
     def printOptions(self):
@@ -24,11 +27,12 @@ class Options():
             hp.print2screenOptions("2: Define Particle(s)", self.hasParticles)
             hp.print2screenOptions("3: Define Geometries", self.hasGeometries)
             hp.print2screenOptions("4: Define Particle Insertion", self.hasFactory)
+            hp.print2screenOptions("5: Define Run", self.hasRunSetup)
             print()
             print("8: Save/Load")
             print("9: Write Input File")
             print("0: Exit")
-
+            
             self.getOption()
 
             if self.opt == "0":
@@ -38,20 +42,20 @@ class Options():
 
     def getOption(self):
         self.opt = input("Options to use: ")
+        hp.clear()
         if self.opt == '1':
             print("Getting Simulation Porps")
             self.hasUnits = self.simProps.getSimPropOpts()
         elif self.opt == '2':
-            if self.hasUnits:
-                print("Defining Particle(s)")
-                self.hasParticles = self.partTemp.getPartOpts(self.simProps)
-            else:
-                print("Must define simulation properties before defining particles")
+            self.hasParticles = self.partTemp.getPartTemp()
         elif self.opt == '3':
             print("Defining Geometries")
             self.hasGeometries = self.geom.getGeomOpts()
         elif self.opt == '4':
             print("Defining Particle Insertion")
+            self.hasParticles = self.partTemp.getPartTemp(self.simProps)
+        elif self.opt == '5':
+            self.hasRunSetup = self.runProps.getRunProps(self.simProps)
             
         elif self.opt == '8':
             self.saveLoad()

@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 from options import Options as Opt
 from helpers import clear
 def main():

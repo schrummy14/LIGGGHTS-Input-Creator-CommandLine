@@ -99,11 +99,13 @@ class properties():
                 self.atomType = "granular"
                 self.numBondTypes = -1
                 self.maxBondsPerAtom = -1
+                # hp.clear()
                 break
             elif opt == "2":
                 self.numBondTypes = hp.getNum("Number of Bond Types: ")
                 self.maxBondsPerAtom = hp.getNum("Max Bonds Per Atom: ")
                 self.atomType = "hybrid granular bond/gran"
+                # hp.clear()
                 break
             else:
                 print("Bad Option...")
@@ -132,6 +134,7 @@ class properties():
                 self.boundaries["z"][1] = hp.getNum("Max Z Boundary: ")
                 hp.clear()
             elif opt == "3":
+                hp.clear()
                 return
             else:
                 print("Bad Input...")
@@ -144,19 +147,24 @@ class properties():
             print("2: Contact Model")
             print("3: Bond Model")
             print("4: Material Properties")
-            print("5: Back")
+            print("0: Back")
 
             opt = input("Option to use: ")
             hp.clear()
             if opt == "1":
                 self.numMaterials = int(hp.getNum("Number of Materials: "))
+                hp.clear()
             elif opt == "2":
                 self.contactModel["p2p"] = self.getContactModel()
+                hp.clear()
             elif opt == "3":
                 self.bondModel = "gran"
+                hp.clear()
             elif opt == "4":
                 self.getMaterialProps()
-            elif opt == "5":
+                hp.clear()
+            elif opt == "0":
+                hp.clear()
                 return
 
     def getMaterialProps(self):
@@ -296,20 +304,24 @@ class properties():
             print("1: Contact Model")
             print("2: Cohesion Model")
             print("3: Rolling Model")
-            print("4: Go Back")
+            print("0: Go Back")
             
             opt = input("Option to use: ")
             hp.clear()
             if opt == "1" and haveBeen < 1:
                 conMod += self.getContacts()
                 haveBeen += 1
+                hp.clear()
             elif opt == "2" and haveBeen < 2:
                 conMod += self.getCohesions()
                 haveBeen += 1
+                hp.clear()
             elif opt == "3" and haveBeen < 3:
                 conMod += self.getRolling()
                 haveBeen += 1
-            elif opt == "4":
+                hp.clear()
+            elif opt == "0":
+                hp.clear()
                 return conMod
             else:
                 print("Bad Input")
@@ -322,8 +334,9 @@ class properties():
             print("2: Hooke")
             print("3: Hertz Stiffness")
             print("4: Hooke Stiffness")
-            print("5: Go Back")
+            print("0: Go Back")
             opt = input("Option to use: ")
+            hp.clear()
             if opt == "1":
                 return "hertz tangential history "
             elif opt == "2":
@@ -332,7 +345,7 @@ class properties():
                 return "hertz/stiffness tangential history "
             elif opt == "4":
                 return "hooke/stiffness tangential history "
-            elif opt == "5":
+            elif opt == "0":
                 return 
             else:
                 hp.clear()
@@ -346,8 +359,9 @@ class properties():
             print("2: sjkr")
             print("3: sjkr2")
             print("4: washino/capillary/viscous")
-            print("5: Go Back")
+            print("0: Go Back")
             opt = input("Option to use: ")
+            hp.clear()
             if opt == "1":
                 return "cohesion easo/capillary/viscous "
             elif opt == "2":
@@ -356,7 +370,7 @@ class properties():
                 return "cohesion sjkr2 "
             elif opt == "4":
                 return "cohesion washino/capillary/viscous "
-            elif opt == "5":
+            elif opt == "0":
                 return 
             else:
                 hp.clear()
@@ -371,8 +385,9 @@ class properties():
             print("2: epsd")
             print("3: epsd2")
             print("4: epsd3")
-            print("5: Go Back")
+            print("0: Go Back")
             opt = input("Option to use: ")
+            hp.clear()
             if opt == "1":
                 return "rolling_friction cdt "
             elif opt == "2":

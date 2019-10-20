@@ -1,11 +1,15 @@
+from particleTemplate import particle as pT
 from geometryInsert import geometryInsert as gI
 from simulationProps import properties as sP
 import helpers as hp
 
 props = sP()
 geom = gI()
+temp = pT()
 
-geom.getGeomOpts()
+temp.getPartTemp()
+
+# geom.getGeomOpts()
 
 
 # geom.addSTL(
