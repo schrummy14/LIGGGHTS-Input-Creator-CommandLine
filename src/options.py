@@ -1,6 +1,7 @@
 import pickle
+import numpy as np
 import helpers as hp
-from runProperties import run 
+from runProperties import runproperties as rP
 from particleTemplate import particle as pT
 from simulationProps import properties as sP
 from geometryInsert import geometryInsert as gI
@@ -15,7 +16,7 @@ class Options():
         self.geom = gI()
         self.simProps = sP()
         self.partTemp = pT()
-        self.runProps = run()
+        self.runProps = rP()
         self.opt = -1
 
     def printOptions(self):
@@ -26,7 +27,7 @@ class Options():
             hp.print2screenOptions("1: Set Simulation Properties", self.hasUnits)
             hp.print2screenOptions("2: Define Particle(s)", self.hasParticles)
             hp.print2screenOptions("3: Define Geometries", self.hasGeometries)
-            hp.print2screenOptions("4: Define Particle Insertion", self.hasFactory)
+            # hp.print2screenOptions("4: Define Particle Insertion", self.hasFactory)
             hp.print2screenOptions("5: Define Run", self.hasRunSetup)
             print()
             print("8: Save/Load")
@@ -44,21 +45,68 @@ class Options():
         self.opt = input("Options to use: ")
         hp.clear()
         if self.opt == '1':
-            print("Getting Simulation Porps")
             self.hasUnits = self.simProps.getSimPropOpts()
         elif self.opt == '2':
             self.hasParticles = self.partTemp.getPartTemp()
         elif self.opt == '3':
-            print("Defining Geometries")
             self.hasGeometries = self.geom.getGeomOpts()
-        elif self.opt == '4':
-            print("Defining Particle Insertion")
-            self.hasParticles = self.partTemp.getPartTemp(self.simProps)
+        # elif self.opt == '4':
+        #     self.hasParticles = self.partTemp.getPartTemp(self.simProps)
         elif self.opt == '5':
-            self.hasRunSetup = self.runProps.getRunProps(self.simProps)
+            self.hasRunSetup = self.runProps.getRunProps(self.simProps, self.partTemp)
             
         elif self.opt == '8':
             self.saveLoad()
+
+        elif self.opt == '9':
+            self.writeLiggghts()
+    
+    def writeLiggghts(self):
+        hp.clear()
+        with open('in.liggghts','w') as f:
+            write("# This is an automatically created file provided by the LIGGGHTS-Input-Creator",f)
+            write("# Set Atom Style",f)
+            write("atom_style %s"%(self.simProps.atomType),f)
+            write("atom_modify map array",f)
+            if np.min(self.simProps.contactProps['youngsModulus']) < 1.0e6:
+                write('soft_particles yes',f)
+            if np.max(self.simProps.contactProps['youngsModulus']) > 1.0e9:
+                write('hard_particles yes',f)
+            
+            write("\n# Boundaries",f)
+            write("boundary %s %s %s"%(self.simProps.boundaries['x'][-1], self.simProps.boundaries['y'][-1], self.simProps.boundaries['z'][-1]),f)
+            write("newton off\ncommunicate single vel yes\nunits si",f)
+
+            write("\n# Create Simulation Region",f)
+            xMin = self.simProps.boundaries['x'][0]
+            yMin = self.simProps.boundaries['y'][0]
+            zMin = self.simProps.boundaries['z'][0]
+            xMax = self.simProps.boundaries['x'][1]
+            yMax = self.simProps.boundaries['y'][1]
+            zMax = self.simProps.boundaries['z'][1]
+            write("region domain block %e %e %e %e %e %e units box"%(xMin,xMax,yMin,yMax,zMin,zMax),f)
+            write("create_box %i domain"%(self.simProps.numMaterials),f)
+
+            write("\n# Define Contact/Fiber Models",f)
+            write("pair_style %s"%(self.simProps.contactModel['p2p']),f)
+            if self.simProps.numBondTypes > 0:
+                write("bond_style %s"%(self.simProps.bondModel['p2p']),f)
+            
+            write("\n# Set Comunication Settings",f)
+            write("neighbor %e bin"%(1.0*self.partTemp.getMinRadius()),f)
+            write("neigh_modify delay 0",f)
+
+            write("\n# Set Coefficients for Contact/Fiber Model",f)
+            write("pair_coeff * *",f)
+
+            if self.simProps.numBondTypes > 0:
+                write(self.simProps.writeBondCoefs(),f) # write("bond_coeff %s"%(self.simProps.bondModel['p2p']),f)
+            
+            write("\n# Set Material Properties",f)
+            write(self.simProps.writeMaterialProps(),f)
+
+            write("\n# Insert Geometry and Factory",f)
+
 
 
     def saveLoad(self):
@@ -90,3 +138,5 @@ class Options():
                 hp.clear()
                 print("Not a valid input...")
 
+def write(curStr,fid):
+    fid.write(curStr + '\n')

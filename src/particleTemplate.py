@@ -2,15 +2,10 @@ import numpy as np
 import helpers as hp
 import matplotlib.pyplot as plt
 
-from tkinter import Tk
-from tkinter import filedialog as fd
-
-Tk().withdraw()
-
 class particle():
     def __init__(self):
         self.template = []
-        self.renderLines = 8
+        self.renderLines = 16
         
     def getPartTemp(self):
         while True:
@@ -72,8 +67,7 @@ class particle():
 
     
     def loadTemplate(self):
-        print("Select Particle Template From File")
-        fileName = fd.askopenfilename()
+        fileName = hp.getFileName('ANY_TYPE', "Select Particle Template From File")
         print("Loading file: " + fileName)
         with open(fileName, 'r') as f:
             lines = f.readlines()
@@ -182,7 +176,25 @@ class particle():
             ax.set_zlim3d([bounds[4], bounds[4] + dB])
             plt.show()
 
+    def getMaxRadius(self):
+        maxR = 0.0
+        numTemplates = len(self.template)
+        for k in range(numTemplates):
+            temp = self.template[k]
+            for atom in temp.atom:
+                if atom[-1] > maxR:
+                    maxR = atom[-1]
+        return maxR
 
+    def getMinRadius(self):
+        minR = 1.0e9
+        numTemplates = len(self.template)
+        for k in range(numTemplates):
+            temp = self.template[k]
+            for atom in temp.atom:
+                if atom[-1] < minR:
+                    minR = atom[-1]
+        return minR
         
     def defineTemplate(self):
         hp.clear()

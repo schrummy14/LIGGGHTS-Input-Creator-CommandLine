@@ -1,11 +1,15 @@
 import types
+import numpy as np
 import helpers as hp
+
 class properties():
     def __init__(self):
         self.atomType = "sphere"
+        self.jkr_flag = False
         self.numMaterials = 0
         self.numBondTypes = 0
         self.maxBondsPerAtom = 0
+        self.gravity = [0.0, 0.0, 0.0, 0.0]
         self.contactModel = {
             "p2p": "",
             "p2w": ""
@@ -28,7 +32,9 @@ class properties():
             "youngsModulus": [],
             "poissonsRatio": [],
             "coefRestitution": [],
-            "coefFriction": []
+            "coefFriction": [],
+            "coefAdhesion": [],
+            "jkrResolution": 0.0
         }
 
         self.bondProps = {
@@ -53,7 +59,60 @@ class properties():
             "coeffRollingStiffness": 0.0
         }
 
-   
+    def writeBondCoefs(self):
+        return ''
+    
+    def writeMaterialProps(self):
+        curStr = "fix m1 all property/global youngsModulus peratomtype"
+        for k in range(self.numMaterials):
+            curStr += ' %e'%(self.contactProps['youngsModulus'][k])
+
+        curStr += "\nfix m2 all property/global poissonsRatio peratomtype"
+        for k in range(self.numMaterials):
+            curStr += ' %e'%(self.contactProps['poissonsRatio'][k])
+
+        curStr += "\nfix m3 all property/global coefficientFriction peratomtypepair %i"%(self.numMaterials)
+        cof = self.buildTypeMatrix(self.contactProps['coefFriction'])
+        for k in range(self.numMaterials):
+            for m in range(self.numMaterials):
+                curStr += " %e"%(cof[k][m])
+
+        curStr += "\nfix m4 all property/global coefficientRestitution peratomtypepair %i"%(self.numMaterials)
+        cof = self.buildTypeMatrix(self.contactProps['coefRestitution'])
+        for k in range(self.numMaterials):
+            for m in range(self.numMaterials):
+                curStr += " %e"%(cof[k][m])
+
+        fixNum = 5
+        if self.jkr_flag:
+            curStr += "\nfix m%i all property/global workOfAdhesion peratomtypepair %i"%(fixNum,self.numMaterials)
+            cof = self.buildTypeMatrix(self.contactProps['coefAdhesion'])
+            for k in range(self.numMaterials):
+                for m in range(self.numMaterials):
+                    curStr += " %e"%(cof[k][m])
+            fixNum += 1
+            curStr += "\nfix m%i all property/global resolutionJKR scalar %e" % (fixNum, self.contactProps['jkrResolution'])
+            fixNum += 1
+
+        if len(self.rollingProps['coefficientRollingFriction']) > 0:
+            curStr += "\nfix m%i all property/global coefficientRollingFriction peratomtypepair %i"%(fixNum,self.numMaterials)
+            cof = self.buildTypeMatrix(self.rollingProps['coefficientRollingFriction'])
+            for k in range(self.numMaterials):
+                for m in range(self.numMaterials):
+                    curStr += " %e"%(cof[k][m])
+            fixNum += 1
+
+        return curStr
+
+    def buildTypeMatrix(self,arr):
+        cof = np.zeros([self.numMaterials,self.numMaterials])
+        km = 0
+        for k in range(self.numMaterials):
+            for m in range(k,self.numMaterials):
+                cof[k][m] = arr[km]
+                km += 1
+        return cof + cof.T - np.diag(cof.diagonal())
+
     def getSimPropOpts(self):
         hp.clear()
         while True:
@@ -78,15 +137,22 @@ class properties():
             else:
                 print("Bad Input...")
         curObs = [k for k in vars(self)]
+        notSet = False
         for ob in curObs:
+            # print(ob)
             if type(vars(self)[ob]) is int:
                 if vars(self)[ob] == 0:
                     print("Simulation Property [" + ob + "] Still Needs To Be Set...")
-                    return False    
+                    notSet |= True
+            elif type(vars(self)[ob]) is bool:
+                continue
             elif len(vars(self)[ob]) == 0:
                 print("Simulation Property [" + ob + "] Still Needs To Be Set...")
-                return False
-        return True
+                notSet |= True
+        if notSet:
+            return False
+        else:
+            return True
 
     def setAtomStyle(self):
         hp.clear()
@@ -117,10 +183,12 @@ class properties():
             print("Select Boundary Info")
             print("1: Boundary Types")
             print("2: Boundary Size")
-            print("3: Go Back")
+            print("3: Gravity")
+            print("0: Go Back")
             opt = input("Option to use: ")
             hp.clear()
             if opt == "1":
+                print("Boundaries can be (f)ixed or (p)eriodic")
                 self.boundaries["x"][2] = getBoundaryType("Boundary Type X: ")
                 self.boundaries["y"][2] = getBoundaryType("Boundary Type Y: ")
                 self.boundaries["z"][2] = getBoundaryType("Boundary Type Z: ")
@@ -134,6 +202,13 @@ class properties():
                 self.boundaries["z"][1] = hp.getNum("Max Z Boundary: ")
                 hp.clear()
             elif opt == "3":
+                self.gravity[0] = hp.getNum("Set Gravity Magnitude: ")
+                print("Gravity Direction")
+                self.gravity[1] = hp.getNum("X - Direction: ")
+                self.gravity[2] = hp.getNum("Y - Direction: ")
+                self.gravity[3] = hp.getNum("Z - Direction: ")
+                hp.clear()
+            elif opt == "0":
                 hp.clear()
                 return
             else:
@@ -171,6 +246,8 @@ class properties():
         conMod = self.contactModel["p2p"]
         self.contactModel["p2w"] = conMod
 
+        # print(conMod)
+
         print("Setting Properties for the Physics Model")
         modelId = conMod.find("model")
         cohesionId = conMod.find("cohesion")
@@ -189,29 +266,37 @@ class properties():
         if len(contactMod) == 0:
             return
 
+        self.contactProps["youngsModulus"] = []
         for k in range(numAtomTypes):
             curStr = "Contact Young's Modulus for Type %i: " % (k+1)
             self.contactProps["youngsModulus"].append(hp.getNum(curStr))
         
+        self.contactProps["poissonsRatio"] = []
         for k in range(numAtomTypes):
             curStr = "Contact Poisson's Ratio for Type %i: " % (k+1)
             self.contactProps["poissonsRatio"].append(hp.getNum(curStr))
 
+        self.contactProps["coefRestitution"] = []
         for k1 in range(numAtomTypes):
             for k2 in range(k1,numAtomTypes):
                 curStr = "Coefficient of Restitution Between Types %i and %i: " % (k1+1, k2+1)
                 self.contactProps["coefRestitution"].append(hp.getNum(curStr))
         
+        self.contactProps["coefFriction"] = []
         for k1 in range(numAtomTypes):
             for k2 in range(k1,numAtomTypes):
                 curStr = "Coefficient of Friction Between Types %i and %i: " % (k1+1, k2+1)
                 self.contactProps["coefFriction"].append(hp.getNum(curStr))
 
-        if contactMod == "hooke" or contactMod == "hooke/stiffness":
+        if contactMod[:contactMod.find(" ")].strip() == "hooke" or contactMod[:contactMod.find(" ")].strip() == "hooke/stiffness":
             curStr = "Characteristic Velocity: "
             self.contactProps["characteristicVelocity"] = hp.getNum(curStr)
 
-        if contactMod == "hertz/stiffness" or contactMod == "hooke/stiffness":
+        if contactMod[:contactMod.find(" ")].strip() == "hertz/stiffness" or contactMod[:contactMod.find(" ")].strip() == "hooke/stiffness":
+            self.contactProps["kn"] = []
+            self.contactProps["kt"] = []
+            self.contactProps["gamman"] = []
+            self.contactProps["gammat"] = []
             for k1 in range(numAtomTypes):
                 for k2 in range(k1,numAtomTypes):
                     curStr = "Normal Stiffness Between Types %i and %i: " % (k1+1, k2+1)
@@ -229,6 +314,13 @@ class properties():
                     curStr = "Tangential Damping Between Types %i and %i: " % (k1+1, k2+1)
                     self.contactProps["gammat"].append(hp.getNum(curStr))
         
+        if contactMod[:contactMod.find(" ")].strip() == 'jkr':
+            self.contactProps["coefAdhesion"] = []
+            for k1 in range(numAtomTypes):
+                for k2 in range(k1,numAtomTypes):
+                    curStr = "Coefficient of Adhesion Between Types %i and %i: " % (k1+1, k2+1)
+                    self.contactProps["coefAdhesion"].append(hp.getNum(curStr))
+            self.contactProps["jkrResolution"] = hp.getNum("Reselution in JKR interpolation table (1.0e-4): ")
 
     def getCohesionProps(self, cohesionMod):
         if cohesionMod == -1:
@@ -280,6 +372,7 @@ class properties():
         if len(rollMod) == 0:
             return
 
+        self.rollingProps["coefficientRollingFriction"] = []
         for k1 in range(numAtomTypes):
             for k2 in range(k1,numAtomTypes):
                 curStr = "Coef Rolling Friction Between Type %i and %i: " % (k1+1,k2+1)
@@ -287,6 +380,7 @@ class properties():
         if rollMod == "cdt" or rollMod == "epsd2":
             pass
         elif rollMod == "epsd" or rollMod == "epsd3":
+            self.rollingProps["coefficientRollingViscousDamping"] = []
             for k1 in range(numAtomTypes):
                 for k2 in range(k1,numAtomTypes):
                     curStr = "Coef Rolling Damping Between Type %i and %i: " % (k1+1,k2+1)
@@ -300,6 +394,7 @@ class properties():
         haveBeen = 0
         hp.clear()
         while True:        
+            print("Current option:", conMod)
             print("Current Contact Models")
             print("1: Contact Model")
             print("2: Cohesion Model")
@@ -308,15 +403,15 @@ class properties():
             
             opt = input("Option to use: ")
             hp.clear()
-            if opt == "1" and haveBeen < 1:
+            if opt == "1" and haveBeen == 0:
                 conMod += self.getContacts()
                 haveBeen += 1
                 hp.clear()
-            elif opt == "2" and haveBeen < 2:
+            elif opt == "2" and haveBeen == 1:
                 conMod += self.getCohesions()
                 haveBeen += 1
                 hp.clear()
-            elif opt == "3" and haveBeen < 3:
+            elif opt == "3" and haveBeen == 2:
                 conMod += self.getRolling()
                 haveBeen += 1
                 hp.clear()
@@ -324,7 +419,7 @@ class properties():
                 hp.clear()
                 return conMod
             else:
-                print("Bad Input")
+                print("Bad Input: Must go in the order Contact Model -> Cohesion Model -> Rolling Model")
     
     def getContacts(self):
         hp.clear()
@@ -334,6 +429,7 @@ class properties():
             print("2: Hooke")
             print("3: Hertz Stiffness")
             print("4: Hooke Stiffness")
+            print("5: JKR")
             print("0: Go Back")
             opt = input("Option to use: ")
             hp.clear()
@@ -345,21 +441,28 @@ class properties():
                 return "hertz/stiffness tangential history "
             elif opt == "4":
                 return "hooke/stiffness tangential history "
+            elif opt == "5":
+                self.jkr_flag = True
+                return "jkr tangential jkr_tan "
             elif opt == "0":
-                return 
+                return ""
             else:
                 hp.clear()
                 print("Bad Input")
 
     def getCohesions(self):
         hp.clear()
+        if self.jkr_flag:
+            print("Cannot have a cohesion model with jkr")
+            input("Press enter to continue:")
+            return ""
         while True:
             print("Current Cohession Models")
             print("1: easo/capillary/viscous")
             print("2: sjkr")
             print("3: sjkr2")
             print("4: washino/capillary/viscous")
-            print("0: Go Back")
+            print("0: None")
             opt = input("Option to use: ")
             hp.clear()
             if opt == "1":
@@ -371,7 +474,7 @@ class properties():
             elif opt == "4":
                 return "cohesion washino/capillary/viscous "
             elif opt == "0":
-                return 
+                return ""
             else:
                 hp.clear()
                 print("Bad Input")
@@ -381,30 +484,39 @@ class properties():
         hp.clear()
         while True:
             print("Current Rolling Models")
-            print("1: cdt")
-            print("2: epsd")
-            print("3: epsd2")
-            print("4: epsd3")
-            print("0: Go Back")
+            if self.jkr_flag:
+                print("1: cdt_jkr")
+            else:
+                print("1: cdt")
+                print("2: epsd")
+                print("3: epsd2")
+                print("4: epsd3")
+            print("0: None")
             opt = input("Option to use: ")
             hp.clear()
-            if opt == "1":
-                return "rolling_friction cdt "
-            elif opt == "2":
-                return "rolling_friction epsd "
-            elif opt == "3":
-                return "rolling_friction epsd2 "
-            elif opt == "4":
-                return "rolling_friction epsd3 "
-            elif opt == "5":
-                return 
-            else:
-                hp.clear()
-                print("Bad Input")
+            if self.jkr_flag:
+                if opt == "1":
+                    return "rolling_friction cdt_jkr "
+                elif opt == "0":
+                    return ""
+                else:
+                    hp.clear()
+                    print("Bad Input")
+            else:    
+                if opt == "1":
+                    return "rolling_friction cdt "
+                elif opt == "2":
+                    return "rolling_friction epsd "
+                elif opt == "3":
+                    return "rolling_friction epsd2 "
+                elif opt == "4":
+                    return "rolling_friction epsd3 "
+                elif opt == "0":
+                    return ""
+                else:
+                    hp.clear()
+                    print("Bad Input")
                 
-
-
-
 def getBoundaryType(outStr):
     while True:
         b = input(outStr)

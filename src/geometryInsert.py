@@ -1,14 +1,12 @@
+import os
 import stl
 import copy
 import math
 import numpy as np
 import helpers as hp
-from tkinter import Tk
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
-from tkinter import filedialog as fd
 
-Tk().withdraw()
 
 class geometryInsert():
     def __init__(self):
@@ -31,19 +29,14 @@ class geometryInsert():
             hp.clear()
             if opt == "1":
                 self.makeSTL()
-                # hp.clear()
             elif opt == "2":
                 print("Not Done")
-                # hp.clear()
             elif opt == "3":
                 self.updateGeom()
-                # hp.clear()
             elif opt == "4":
                 self.render()
-                # hp.clear()
             elif opt == "5":
                 self.delGeom()
-                # hp.clear()
             elif opt == "0":
                 break
             else:
@@ -137,7 +130,8 @@ class geometryInsert():
 
     def makeSTL(self):
         # Get filename
-        fileName = fd.askopenfilename()
+        fileName = hp.getFileName(['stl', 'STL'], "Path to STL file:")
+        
         while True:
             stlName = input("Name of STL file: ")
             foundName = False
@@ -188,7 +182,11 @@ class geometryInsert():
             print("Cannot give both a filename and a stl object")
         if len(fileName) > 0:
             print("Reading in stl file: " + fileName)
-            stlMesh = stl.mesh.Mesh.from_file(fileName)
+            try:
+                stlMesh = stl.mesh.Mesh.from_file(fileName)
+            except:
+                with open(fileName) as f:
+                    stlMesh = stl.read_ascii_file(f)
         if name == 'stl':
             name+=str(len(self.stlFiles))
         newSTL = stlOb(
@@ -302,6 +300,3 @@ class stlOb():
         self.orgScale = scale
         self.fileLocation = fileLocation
         self.stlObject = stlObject
-
-
-        
