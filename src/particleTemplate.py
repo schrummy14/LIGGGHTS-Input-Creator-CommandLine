@@ -13,7 +13,7 @@ class particle():
             print("1: Define Particle Template")
             print("2: Update Particle Template")
             print("3: Delete Particle Template")
-            # print("4: Optimize to stl")
+            print("4: Optimize to stl (Comming Soon!!!)")
             print("4: Load Template")
             print("5: Show Template")
             print("0: Go Back")
@@ -207,6 +207,7 @@ class particle():
         mol = molecule()
         mol.name = input("Name of Particle: ")
         mol.density = hp.getNum("Density of Particle: ")
+        mol.type = int(hp.getNum("Material Type of Particle: "))
         for k in range(numAtoms):
             print("Sphere ", k+1)
             x = hp.getNum("x pos: ")
@@ -225,6 +226,7 @@ class molecule():
     def __init__(self):
         self.name = ""
         self.density = 0.0
+        self.type = 1
         self.atom = []
 
 def getNum(curStr):

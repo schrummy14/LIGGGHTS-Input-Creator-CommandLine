@@ -43,7 +43,7 @@ def getNum(curStr):
 def getNewPrime():
     global primeNumbers
     kStart = 20600
-    kEnd = 1000000*kStart
+    kEnd = 1000*kStart
     while True:
         k = np.random.randint(kStart,kEnd)
         p1 = 6*k-1

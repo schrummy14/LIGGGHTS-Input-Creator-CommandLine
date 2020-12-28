@@ -65,7 +65,9 @@ class Options():
         hp.clear()
         with open('in.liggghts','w') as f:
             write("# This is an automatically created file provided by the LIGGGHTS-Input-Creator",f)
-            write("# Set Atom Style",f)
+            write("shell mkdir post",f)
+            write("shell mkdir restart",f)
+            write("\n# Set Atom Style",f)
             write("atom_style %s"%(self.simProps.atomType),f)
             write("atom_modify map array",f)
             if np.min(self.simProps.contactProps['youngsModulus']) < 1.0e6:
@@ -105,7 +107,26 @@ class Options():
             write("\n# Set Material Properties",f)
             write(self.simProps.writeMaterialProps(),f)
 
-            write("\n# Insert Geometry and Factory",f)
+            # write("\n# Insert Geometry and Factory",f)
+            write(self.geom.writeGeometryProps(self.simProps.contactModel['p2w'][11:-1]),f)
+
+            # Add Gravity
+            write("\n# Add Gravity",f)
+            write("fix grav_fix all gravity %e vector %e %e %e" % (self.simProps.gravity[0], self.simProps.gravity[1], self.simProps.gravity[2], self.simProps.gravity[3]), f)
+
+            write("\n# Set Integration Type and Time Step", f)
+            write("fix integr all nve/sphere",f)
+            write("timestep %e" % (self.runProps.dt), f)
+
+            # Add Insertion Options
+            write(self.runProps.writeFactoryOptions(self.partTemp),f)
+
+            write('\n# Add thermo and dump options',f)
+            write(self.runProps.writeThermoOptions(),f)
+            write('\nrun 1',f)
+            write(self.geom.writeDumpOptions(self.runProps.file_steps),f)
+            write(self.runProps.writeDumpOptions(),f)
+
 
 
 
@@ -116,6 +137,7 @@ class Options():
             print("2: Load Session")
             print("3: Main Menu")
             opt = input("Option to use: ")
+            hp.clear()
             if opt == "1":
                 with open("currentSession.obj", 'wb') as f:
                     pickle.dump(self,f)

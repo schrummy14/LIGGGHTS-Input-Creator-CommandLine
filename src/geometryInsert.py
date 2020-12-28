@@ -13,6 +13,7 @@ class geometryInsert():
         self.figureName = []
         self.axisName = []
         self.stlFiles = []
+        self.primitives = []
 
     def getGeomOpts(self):
         # hp.clear()
@@ -43,6 +44,45 @@ class geometryInsert():
                 hp.clear()
                 print("Bad Option")
         return True
+
+    def writeDumpOptions(self,file_steps):
+        curStr = ''
+        for f in self.stlFiles:
+            curStr += "\ndump dmp_%s all mesh/vtk %i post/stl_%s_*.vtk stress stresscomponents %s" % (
+                f.name,
+                file_steps,
+                f.name,
+                f.name
+            )
+        return curStr
+
+    def writeGeometryProps(self,p2w):
+        if len(self.stlFiles) == 0:
+            return ''
+        curStr = "\n# Insert Geometry and Factory"
+        meshNames = ''
+        for mesh in self.stlFiles:
+            meshNames += ' %s' % (mesh.name)
+            curStr += "\nfix %s all mesh/surface/stress file %s type %i scale %e rotate axis %e %e %e angle %e move %e %e %e curvature_tolerant yes" % (
+                mesh.name,
+                mesh.fileLocation,
+                mesh.matType,
+                mesh.orgScale,
+                mesh.orgRotate[0],mesh.orgRotate[1],mesh.orgRotate[2],mesh.orgRotate[3],
+                mesh.orgMove[0],mesh.orgMove[1],mesh.orgMove[2]
+            )
+        curStr += "\nfix geo_walls all wall/gran model %s mesh n_meshes %i meshes%s" % (p2w, len(self.stlFiles), meshNames)
+
+        for mesh in self.primitives:
+            curStr += "\nfix %s all wall/gran model %s primitive type %i %s %e" %(
+                mesh.name,
+                p2w,
+                mesh.matType,
+                mesh.xyzPlane,
+                mesh.value
+            )
+        return curStr
+
 
     def delGeom(self):
         hp.clear()
@@ -126,12 +166,12 @@ class geometryInsert():
         self.stlFiles[opt-1] = newSTL   
         hp.clear()     
 
-
+    def makePrimitive(self):
+        return
 
     def makeSTL(self):
         # Get filename
         fileName = hp.getFileName(['stl', 'STL'], "Path to STL file:")
-        
         while True:
             stlName = input("Name of STL file: ")
             foundName = False
@@ -157,12 +197,18 @@ class geometryInsert():
         rz = hp.getNum("Rotate Geom in z: ")
         rv = hp.getNum("Rotate Geom by (Deg): ")
 
+        matType = int(hp.getNum("Material Type: "))
+
+        if rv == 0:
+            rz = 1.0
+
         self.addSTL(
             fileName = fileName, 
             scale = scale, 
             move = (mx,my,mz), 
             rotate = (rx,ry,rz,rv),
-            name = stlName)
+            name = stlName,
+            matType = matType)
         hp.clear()
 
     def addWall(self,type='primative'):
@@ -176,7 +222,8 @@ class geometryInsert():
         scale = 1.0, 
         move = (0.0, 0.0, 0.0),
         rotate = (0.0, 0.0, 0.0, 0.0),
-        name = 'stl'
+        name = 'stl',
+        matType = 1
         ):
         if len(fileName) > 0 and len(stlObject) > 0:
             print("Cannot give both a filename and a stl object")
@@ -191,6 +238,7 @@ class geometryInsert():
             name+=str(len(self.stlFiles))
         newSTL = stlOb(
             name = name,
+            matType = matType,
             stlMesh = stlMesh,
             move = move,
             rotate = rotate,
@@ -270,6 +318,20 @@ class geometryInsert():
         self.axisName.set_zlim(bounds[4], bounds[4] + db)
         plt.show()
 
+class primOb():
+    def __init__(
+        self,
+        name,
+        matType,
+        xyzPlane,
+        value
+        ):
+        self.name = name
+        self.matType = matType
+        self.xyzPlane = xyzPlane
+        self.value = value
+
+
 # Holds the information about a specific stl file or stl object
 class stlOb():
     def __init__(
@@ -279,6 +341,7 @@ class stlOb():
         rotate = (0.0, 0.0, 0.0, 0.0),
         scale = 1.0,
         name = None,
+        matType = int(1),
         fileLocation = "",
         stlObject = []
         ):
@@ -295,6 +358,7 @@ class stlOb():
         # Save everything along with original parameters
         self.vectors = stlMesh.vectors
         self.name = name
+        self.matType = matType
         self.orgMove = move
         self.orgRotate = rotate
         self.orgScale = scale

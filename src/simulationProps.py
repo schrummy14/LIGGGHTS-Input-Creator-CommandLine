@@ -246,8 +246,6 @@ class properties():
         conMod = self.contactModel["p2p"]
         self.contactModel["p2w"] = conMod
 
-        # print(conMod)
-
         print("Setting Properties for the Physics Model")
         modelId = conMod.find("model")
         cohesionId = conMod.find("cohesion")
