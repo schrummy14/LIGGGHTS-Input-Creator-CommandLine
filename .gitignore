@@ -1,2 +1,9 @@
 src/__py*
 src/*.pyc
+src/.vscode
+src/*.obj
+src/*.liggghts
+src/post
+src/*.txt
+src/docs/html
+src/docs/latex
