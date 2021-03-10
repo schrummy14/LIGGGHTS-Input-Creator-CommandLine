@@ -1,14 +1,27 @@
+"""
+Generates the run properties
+"""
+
 import numpy as np
 import helpers as hp
 
+## Main run class
 class runproperties():
+    ## Initialization
     def __init__(self):
+        ## Number of steps for the simulation to run
         self.numSteps = -1
+        ## The time step used in the simulation
         self.dt = -1.0
+        ## The critical ray step
         self.dt_ray = -1.0
+        ## The critical bond step
         self.dt_bond = -1.0
+        ## The factories to be used in the simulation
         self.factories = []
+        ## Number of steps between screen output
         self.thermo_steps = 0
+        ## Screen options
         self.thermo_options = {
             "step": True,
             "time": True,
@@ -18,7 +31,9 @@ class runproperties():
             "cpuremain": True,
             "ke": True
         }
+        ## Number of steps between file outputs
         self.file_steps = 0
+        ## File print options
         self.file_options = {
             "id": True,
             "type": True,
@@ -41,7 +56,10 @@ class runproperties():
             "density": True
         }
         
-
+    ## Generates the run properties from the user
+    #
+    #  @param simProps Simulation Properties Class
+    #  @param atomProps Atom Properties Class
     def getRunProps(self, simProps, atomProps):
          while True:
             if self.dt > 0:
@@ -57,6 +75,7 @@ class runproperties():
             print("2: File Output")
             print("3: Time Step")
             print("4: Build Factory")
+            print("5: Run Time")
             print("0: Go Back")
 
             opt = input("Option to use: ")
@@ -72,11 +91,23 @@ class runproperties():
                 hp.clear()
             elif opt == '4':
                 self.buildFactory(atomProps)
+            elif opt == '5':
+                self.setRunTime()
             elif opt == '0':
                 return self.everythingDefined()
             else:
                 print("Bad Option")
 
+    ## Sets the number of steps needed to run the simulation
+    def setRunTime(self):
+        if self.dt < 0:
+            input("You must set the time step before setting the runtime\nPress enter to return.")
+            return
+        simTime = hp.getNum("How long will the simulation run: ")
+        simSteps = np.ceil(simTime/self.dt)
+        self.numSteps = simSteps
+
+    ## Sets the screen output options
     def screenOutput(self):
         while True:
             print("To Screen Options")
@@ -135,6 +166,7 @@ class runproperties():
                 "Bad Option"        
         return
 
+    ## Sets the file output options
     def fileOutput(self):
         while True:
             print("To Screen Options")
@@ -192,7 +224,10 @@ class runproperties():
                 "Bad Option"        
         return
 
-
+    ## Gets the time step options
+    #
+    #  @param sp Simulation Properties Class
+    #  @param ap Atom Properties Class
     def timeStep(self, sp, ap):
         # Get atom props
         numTemplates = len(ap.template)
@@ -257,7 +292,9 @@ class runproperties():
                 print("Bad Input")
         return
     
-
+    ## Gets the factory options
+    #
+    #  @param atomProps The Atom Properties Class
     def buildFactory(self, atomProps):
         while True:
             print("Set Factory Options")
@@ -284,6 +321,7 @@ class runproperties():
             else:
                 print("Bad Input")
 
+    ## Deletes a factory
     def deleteFactory(self):
         numFactories = len(self.factories)
         if numFactories == 0:
@@ -301,6 +339,7 @@ class runproperties():
             else:
                 break
 
+    ## Edits the factory options
     def setFactoryOptions(self):
         numFactories = len(self.factories)
         if numFactories == 0:
@@ -365,10 +404,16 @@ class runproperties():
 
         return
 
+    ## Sets the orientation of the particle template in a factory
+    #
+    #  @param fact The factory being edited
     def getOrientationOptions(self, fact):
         input("Can only use random orientation at this time. Press enter to return")
         return
 
+    ## Sets the initial velocity of each particle template in a factory
+    #
+    #  @param fact The factory being edited
     def getVelocityOptions(self, fact):
         hp.clear()
         while True:
@@ -387,6 +432,9 @@ class runproperties():
                 print("Bad Input")
         return
 
+    ## Edits how the target value is calculated to determine how many particle are inserted
+    #
+    #  @param fact The factory being edited
     def getTargetTypeOptions(self, fact):
         hp.clear()
         while True:
@@ -401,6 +449,9 @@ class runproperties():
                 print("Bad Input")
         return
 
+    ## Sets the particle distribution
+    #
+    #  @param atomProps The Atom Properties Class
     def setParticleDistribution(self, atomProps):
         if len(atomProps.template) == 0:
             print("No Atoms Defined: You must create atom templates first...")
@@ -465,6 +516,7 @@ class runproperties():
             else:
                 print("Bad Input")
     
+    ## Sets the type of insertion factory to be used
     def getFactoryType(self):
         print("Select Factory Shape")
         print("1: Box")
@@ -505,9 +557,13 @@ class runproperties():
         
         return  
 
+    ## Sanity check
     def everythingDefined(self):
         return True
     
+    ## Writes factory options to the input file
+    #
+    #  @param pt The Particle Template Class
     def writeFactoryOptions(self, pt):
         curStr = "\n# Insertion Options"
         for k, p in enumerate(pt.template):
@@ -544,6 +600,9 @@ class runproperties():
 
         return curStr
 
+    ## Creates the factory string
+    #
+    #  @param f Factory Class
     def getFactoryOptionsStr(self, f):
         curStr = ''
         keys = list(f.factoryOptions.keys())
@@ -565,6 +624,10 @@ class runproperties():
                 curStr += key + ' ' + curOption + ' '
         return curStr[:-1]
 
+    ## Creates the factory region
+    #
+    #  @param k An integer
+    #  @param f The Factory Class
     def getFactoryRegionStr(self,k,f):
         if f.shape.name == 'box':
             return 'region %s block %e %e %e %e %e %e units box\n' % (
@@ -589,7 +652,7 @@ class runproperties():
         else:
             return 'This factory type has not been added to the function: getFactoryRegionStr in runProperties.py'
 
-
+    ## Creates the string for the screen output options
     def writeThermoOptions(self):
         curStr = "thermo_style custom"
         keys = list(self.thermo_options.keys())
@@ -600,6 +663,7 @@ class runproperties():
         curStr += "\nthermo_modify lost ignore norm no"
         return curStr
     
+    ## Creates the string for the file output options
     def writeDumpOptions(self):
         curStr = "dump dmp_part all custom %i post/dump_*.liggghts" % (self.file_steps)
         keys = list(self.file_options.keys())
@@ -608,11 +672,19 @@ class runproperties():
                 curStr += ' ' + str(k)
         return curStr
 
+## The Factory Class
 class factory():
+    ## Initialization
+    #
+    #  @param _name The name of the factory
     def __init__(self,_name):
+        ## The name of the factory
         self.name = _name
+        ## The factory's shape
         self.shape = None
+        ## The particle distribution
         self.atom_distribution = []
+        ## Factory Options
         self.factoryOptions = {
             "maxattempt": int(1000),
             "insert_every": 'once',
@@ -625,16 +697,30 @@ class factory():
             "check_dist_from_subdomain_border": "no"
         }
 
+## Box Factory
 class box_factory():
+    ## Initialization
     def __init__(self):
+        ## Name of factory type
         self.name = 'box'
+        ## Dimmensions of the box factory
         self.dimmensions = [0,0,0,0,0,0]
+
+## Cylinder Factory
 class cylinder_factory():
+    ## Initialization
     def __init__(self):
+        ## Name of factory type
         self.name = 'cylinder'
+        ## The first other coordinate
         self.x1 = 0.0
+        ## The second other coordinate
         self.x2 = 0.0
+        ## The axis of the cylinder
         self.axis = 'xyz'
+        ## Initial height of cylinder
         self.h1 = 0.0
+        ## Final height of cylinder
         self.h2 = 0.0
+        ## Radius of cylinder
         self.radius = 0.0

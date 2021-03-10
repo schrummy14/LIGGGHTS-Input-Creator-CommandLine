@@ -1,28 +1,43 @@
+"""
+Simulation Properties
+"""
+
 import types
 import numpy as np
 import helpers as hp
 
+## Particle and Geometry Interaction Property Class
 class properties():
+    ## Initialization
     def __init__(self):
+        ## Type of atoms in the simulation
         self.atomType = "sphere"
+        ## Use JKR contact
         self.jkr_flag = False
+        ## How many materials in the simulation
         self.numMaterials = 0
+        ## Number of bond types in the simulation
         self.numBondTypes = 0
+        ## Max bonds per atom
         self.maxBondsPerAtom = 0
+        ## Gravity in the simulation
         self.gravity = [0.0, 0.0, 0.0, 0.0]
+        ## The contact model for the simulation
         self.contactModel = {
             "p2p": "",
             "p2w": ""
         }
+        ## The bond model to be used
         self.bondModel = {
             "p2p": ""
         }
+        ## Boundaries in the simulation
         self.boundaries = {
             "x": [0.0, 0.0, "f"],
             "y": [0.0, 0.0, "f"],
             "z": [0.0, 0.0, "f"]
         }
-
+        ## The contact properties
         self.contactProps = {
             "kn": [],
             "kt": [],
@@ -36,12 +51,16 @@ class properties():
             "coefAdhesion": [],
             "jkrResolution": 0.0
         }
-
+        ## The bond properties
         self.bondProps = {
-            "YoungsModulus": 0.0,
-            "PoissonsRatio": 0.0
+            "YoungsModulus": [],
+            "PoissonsRatio": [],
+            "NormalBreak": [],
+            "TanBreak": [],
+            "BreakType": [],
+            "TempBreak": []
         }
-        
+        ## Cohesion model properties
         self.cohesionProps = {
             "minSeparationDistanceRatio": 0.0,
             "maxSeparationDistanceRatio": 0.0,
@@ -52,16 +71,17 @@ class properties():
             "cohesionEnergyDensity": [],
             "maxLiquidContent": []
         }
-
+        ## Rolling model properties
         self.rollingProps = {
+            "adhesionHysteresis": [],
             "coefficientRollingFriction": [],
             "coefficientRollingViscousDamping": [],
             "coeffRollingStiffness": 0.0
         }
-
+    ## Creates a string containing the bond coefficient properties
     def writeBondCoefs(self):
         return ''
-    
+    ## Creates a string containing the material properties
     def writeMaterialProps(self):
         curStr = "fix m1 all property/global youngsModulus peratomtype"
         for k in range(self.numMaterials):
@@ -101,9 +121,19 @@ class properties():
                 for m in range(self.numMaterials):
                     curStr += " %e"%(cof[k][m])
             fixNum += 1
+        
+        if len(self.rollingProps['adhesionHysteresis']) > 0:
+            curStr += "\nfix m%i all property/global adhesionHysteresis peratomtypepair %i"%(fixNum,self.numMaterials)
+            cof = self.buildTypeMatrix(self.rollingProps['adhesionHysteresis'])
+            for k in range(self.numMaterials):
+                for m in range(self.numMaterials):
+                    curStr += " %e"%(cof[k][m])
+            fixNum += 1
 
         return curStr
-
+    ## Builds the interaction matrix
+    #
+    #  @param arr The values to be used in the matrix
     def buildTypeMatrix(self,arr):
         cof = np.zeros([self.numMaterials,self.numMaterials])
         km = 0
@@ -113,6 +143,7 @@ class properties():
                 km += 1
         return cof + cof.T - np.diag(cof.diagonal())
 
+    ## Provides the simulation options to the user to edit
     def getSimPropOpts(self):
         hp.clear()
         while True:
@@ -154,6 +185,7 @@ class properties():
         else:
             return True
 
+    ## Allows the user to set the atom style
     def setAtomStyle(self):
         hp.clear()
         while True:
@@ -177,6 +209,7 @@ class properties():
                 print("Bad Option...")
         hp.clear()
         
+    ## Has the user set the boundary type and size
     def setSimBoundaries(self):
         hp.clear()
         while True:
@@ -214,6 +247,7 @@ class properties():
             else:
                 print("Bad Input...")
 
+    ## Allows the user to set the material properties
     def setMaterialProps(self):
         hp.clear()
         while True:
@@ -242,6 +276,7 @@ class properties():
                 hp.clear()
                 return
 
+    ## Has the user set the properties for the simulation
     def getMaterialProps(self):
         conMod = self.contactModel["p2p"]
         self.contactModel["p2w"] = conMod
@@ -255,6 +290,9 @@ class properties():
         self.getCohesionProps(conMod[cohesionId:rollingId])
         self.getRollingProps(conMod[rollingId:])
 
+    ## Has the user set the contact properties
+    #
+    #  @param contactMod A string that contains the contact model
     def getContactProps(self, contactMod):
         if contactMod == -1:
             return
@@ -320,6 +358,9 @@ class properties():
                     self.contactProps["coefAdhesion"].append(hp.getNum(curStr))
             self.contactProps["jkrResolution"] = hp.getNum("Reselution in JKR interpolation table (1.0e-4): ")
 
+    ## Has the user set the cohesion properties
+    #
+    #  @param cohesionMod A string that contains the cohesion model
     def getCohesionProps(self, cohesionMod):
         if cohesionMod == -1:
             return
@@ -360,7 +401,9 @@ class properties():
                     curStr = "Cohesion Energy Density Between Type %i and %i: " % (k1+1, k2+1)
                     self.cohesionProps["cohesionEnergyDensity"].append(hp.getNum(curStr))
 
-
+    ## Has the user set the rolling properties
+    #
+    #  @param rollMod A string that contains the rolling model
     def getRollingProps(self, rollMod):
         if rollMod == -1:
             return
@@ -377,6 +420,12 @@ class properties():
                 self.rollingProps["coefficientRollingFriction"].append(hp.getNum(curStr))
         if rollMod == "cdt" or rollMod == "epsd2":
             pass
+        elif rollMod == "cdt_jkr":
+            self.rollingProps["adhesionHysteresis"] = []
+            for k1 in range(numAtomTypes):
+                for k2 in range(k1,numAtomTypes):
+                    curStr = "Coef Adhesion Hysteresis Between Type %i and %i: " % (k1+1,k2+1)
+                    self.rollingProps["adhesionHysteresis"].append(hp.getNum(curStr))
         elif rollMod == "epsd" or rollMod == "epsd3":
             self.rollingProps["coefficientRollingViscousDamping"] = []
             for k1 in range(numAtomTypes):
@@ -387,6 +436,7 @@ class properties():
                 curStr = "Coef Rolling Stiffness: "
                 self.rollingProps["coeffRollingStiffness"] = hp.getNum(curStr)
             
+    ## Has the user choose the interaction model
     def getContactModel(self):
         conMod = "gran model "
         haveBeen = 0
@@ -419,6 +469,7 @@ class properties():
             else:
                 print("Bad Input: Must go in the order Contact Model -> Cohesion Model -> Rolling Model")
     
+    ## Has the user choose the contact model
     def getContacts(self):
         hp.clear()
         while True:
@@ -448,6 +499,7 @@ class properties():
                 hp.clear()
                 print("Bad Input")
 
+    ## Has the user choose the cohesion model
     def getCohesions(self):
         hp.clear()
         if self.jkr_flag:
@@ -477,7 +529,7 @@ class properties():
                 hp.clear()
                 print("Bad Input")
 
-
+    ## Has the user choose the rolling model
     def getRolling(self):
         hp.clear()
         while True:
@@ -514,7 +566,10 @@ class properties():
                 else:
                     hp.clear()
                     print("Bad Input")
-                
+
+## Function to get the type of boundary from the user
+#
+#  @param outStr String that the user sees
 def getBoundaryType(outStr):
     while True:
         b = input(outStr)

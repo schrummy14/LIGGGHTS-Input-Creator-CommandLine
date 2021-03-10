@@ -1,12 +1,20 @@
+"""
+Generates the Particle Templates
+"""
 import numpy as np
 import helpers as hp
 import matplotlib.pyplot as plt
 
+## Particle Class
 class particle():
+    ## Initialization
     def __init__(self):
+        ## Template of particle
         self.template = []
+        ## Number of lines to be used when showing the particle template
         self.renderLines = 16
-        
+    
+    ## Has the user generate the template
     def getPartTemp(self):
         while True:
             print("Number of Templates Defined: " + str(len(self.template)))
@@ -40,6 +48,7 @@ class particle():
             else:
                 print("Bad Option")
 
+    ## Updates a molecule template
     def updateTemplate(self):
         hp.clear()
         while True:
@@ -64,8 +73,7 @@ class particle():
             if int(opt) < 1 or int(opt) > numTemplates:
                 print("Error: Input out of range")
             
-
-    
+    ## Load a molecule from file
     def loadTemplate(self):
         fileName = hp.getFileName('ANY_TYPE', "Select Particle Template From File")
         print("Loading file: " + fileName)
@@ -91,7 +99,7 @@ class particle():
         self.template.append(mol)
         return True
 
-    
+    ## Deletes a molecule
     def deleteTemplate(self):
         hp.clear()
         while True:
@@ -117,6 +125,7 @@ class particle():
                 print("Error: Input out of range")
             self.template.pop(opt-1)
 
+    ## Renders a molecule
     def showTemplate(self):
         hp.clear()
         numTemplates = len(self.template)
@@ -176,6 +185,7 @@ class particle():
             ax.set_zlim3d([bounds[4], bounds[4] + dB])
             plt.show()
 
+    ## Returns the maximum radius of all atoms
     def getMaxRadius(self):
         maxR = 0.0
         numTemplates = len(self.template)
@@ -186,6 +196,7 @@ class particle():
                     maxR = atom[-1]
         return maxR
 
+    ## Returns the minimum radius of all atoms
     def getMinRadius(self):
         minR = 1.0e9
         numTemplates = len(self.template)
@@ -195,7 +206,8 @@ class particle():
                 if atom[-1] < minR:
                     minR = atom[-1]
         return minR
-        
+    
+    ## Defines a molecule
     def defineTemplate(self):
         hp.clear()
         while True:
@@ -218,17 +230,26 @@ class particle():
         self.template.append(mol)
         hp.clear()
 
-    
+    ## Sanity Check
     def everythingDefined(self):
         return True
 
+## Molecule Class
 class molecule():
+    ## Initilization
     def __init__(self):
+        ## Name of molecule
         self.name = ""
+        ## Densitly of molecule
         self.density = 0.0
+        ## Atom Type
         self.type = 1
+        ## X, Y, Z, R values for each atom in molecule
         self.atom = []
 
+## Tries to generate a float from user input
+#
+#  @param curStr String to be converted into a number
 def getNum(curStr):
     try:
         num = float(curStr)
@@ -239,7 +260,7 @@ def getNum(curStr):
         return False
     return num
 
-
+## Generates an array from a string
 def getArray(curStr, arrSize):
     curStr = curStr.replace(',', ' ')
     curStr = curStr.strip()

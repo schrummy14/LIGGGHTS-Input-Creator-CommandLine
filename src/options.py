@@ -1,3 +1,7 @@
+"""
+Options for properties provided by user
+"""
+
 import pickle
 import numpy as np
 import helpers as hp
@@ -5,20 +9,35 @@ from runProperties import runproperties as rP
 from particleTemplate import particle as pT
 from simulationProps import properties as sP
 from geometryInsert import geometryInsert as gI
+
+## The main options class
 class Options():
+    ## Initialization
     def __init__(self):
+        ## Boolean for simulation properties
         self.hasUnits = False
+        ## Boolean for region properties
         self.hasRegions = False
+        ## Boolean for particle creation
         self.hasParticles = False
+        ## Boolean for geometry creation
         self.hasGeometries = False
+        ## Boolean for factory creation
         self.hasFactory = False
+        ## Boolean for run creation
         self.hasRunSetup = False
+        ## Geometry Class
         self.geom = gI()
+        ## Simulation Property Class
         self.simProps = sP()
+        ## Particle Class
         self.partTemp = pT()
+        ## Run Property Class
         self.runProps = rP()
+        ## Selected Option
         self.opt = -1
 
+    ## Main options provided to the user
     def printOptions(self):
         hp.clear()
         while True:
@@ -40,7 +59,7 @@ class Options():
                 return
 
 
-
+    ## Gets option from user and calls needed class
     def getOption(self):
         self.opt = input("Options to use: ")
         hp.clear()
@@ -61,6 +80,7 @@ class Options():
         elif self.opt == '9':
             self.writeLiggghts()
     
+    ## Creates the input file
     def writeLiggghts(self):
         hp.clear()
         with open('in.liggghts','w') as f:
@@ -123,13 +143,15 @@ class Options():
 
             write('\n# Add thermo and dump options',f)
             write(self.runProps.writeThermoOptions(),f)
-            write('\nrun 1',f)
+            write('\nrun 0',f)
             write(self.geom.writeDumpOptions(self.runProps.file_steps),f)
             write(self.runProps.writeDumpOptions(),f)
 
+            # Run the simulation!
+            write('\n# Set simulation run time',f)
+            write('run %i'%(self.runProps.numSteps),f)
 
-
-
+    ## Saves/Loads a configuration file
     def saveLoad(self):
         hp.clear()
         while True:
@@ -160,5 +182,9 @@ class Options():
                 hp.clear()
                 print("Not a valid input...")
 
+## writes a string to file
+#
+#  @param curStr The string that will be written to file
+#  @param fid The file that the string is being written to
 def write(curStr,fid):
     fid.write(curStr + '\n')

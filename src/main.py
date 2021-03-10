@@ -1,6 +1,11 @@
 #!/usr/bin/python3
+"""
+Main program
+"""
 from options import Options as Opt
 from helpers import clear
+
+## Entry point to main program
 def main():
     clear()
     opts = Opt()
