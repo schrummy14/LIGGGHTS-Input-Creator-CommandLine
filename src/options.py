@@ -52,7 +52,7 @@ class Options():
             print("8: Save/Load")
             print("9: Write Input File")
             print("0: Exit")
-            
+
             self.getOption()
 
             if self.opt == "0":
@@ -79,7 +79,7 @@ class Options():
 
         elif self.opt == '9':
             self.writeLiggghts()
-    
+
     ## Creates the input file
     def writeLiggghts(self):
         hp.clear()
@@ -94,7 +94,7 @@ class Options():
                 write('soft_particles yes',f)
             if np.max(self.simProps.contactProps['youngsModulus']) > 1.0e9:
                 write('hard_particles yes',f)
-            
+
             write("\n# Boundaries",f)
             write("boundary %s %s %s"%(self.simProps.boundaries['x'][-1], self.simProps.boundaries['y'][-1], self.simProps.boundaries['z'][-1]),f)
             write("newton off\ncommunicate single vel yes\nunits si",f)
@@ -113,7 +113,7 @@ class Options():
             write("pair_style %s"%(self.simProps.contactModel['p2p']),f)
             if self.simProps.numBondTypes > 0:
                 write("bond_style %s"%(self.simProps.bondModel['p2p']),f)
-            
+
             write("\n# Set Comunication Settings",f)
             write("neighbor %e bin"%(1.0*self.partTemp.getMinRadius()),f)
             write("neigh_modify delay 0",f)
@@ -123,7 +123,7 @@ class Options():
 
             if self.simProps.numBondTypes > 0:
                 write(self.simProps.writeBondCoefs(),f) # write("bond_coeff %s"%(self.simProps.bondModel['p2p']),f)
-            
+
             write("\n# Set Material Properties",f)
             write(self.simProps.writeMaterialProps(),f)
 
@@ -131,8 +131,9 @@ class Options():
             write(self.geom.writeGeometryProps(self.simProps.contactModel['p2w'][11:-1]),f)
 
             # Add Gravity
-            write("\n# Add Gravity",f)
-            write("fix grav_fix all gravity %e vector %e %e %e" % (self.simProps.gravity[0], self.simProps.gravity[1], self.simProps.gravity[2], self.simProps.gravity[3]), f)
+            if np.abs(self.simProps.gravity[0]) > 0.0:
+                write("\n# Add Gravity",f)
+                write("fix grav_fix all gravity %e vector %e %e %e" % (self.simProps.gravity[0], self.simProps.gravity[1], self.simProps.gravity[2], self.simProps.gravity[3]), f)
 
             write("\n# Set Integration Type and Time Step", f)
             write("fix integr all nve/sphere",f)
@@ -143,7 +144,9 @@ class Options():
 
             write('\n# Add thermo and dump options',f)
             write(self.runProps.writeThermoOptions(),f)
-            write('\nrun 0',f)
+
+            # Run 1 to make sure dump files are not empty
+            write('\nrun 1',f)
             write(self.geom.writeDumpOptions(self.runProps.file_steps),f)
             write(self.runProps.writeDumpOptions(),f)
 
@@ -157,7 +160,7 @@ class Options():
         while True:
             print("1: Save Session")
             print("2: Load Session")
-            print("3: Main Menu")
+            print("0: Main Menu")
             opt = input("Option to use: ")
             hp.clear()
             if opt == "1":
@@ -176,7 +179,7 @@ class Options():
                 except:
                     print("Cannot Load File... Returning")
                     break
-            elif opt == "3":
+            elif opt == "0":
                 return
             else:
                 hp.clear()
